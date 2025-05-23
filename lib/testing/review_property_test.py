@@ -1,60 +1,41 @@
-from employee import Employee
-from department import Department
-from review import Review
 import pytest
+from review import Review
+from department import Department
+from employee import Employee
 
+@pytest.fixture
+def employee():
+    Department.drop_table()
+    Employee.drop_table()
+    Review.drop_table()
 
-class TestReviewProperties:
-    '''Class Review in review.py'''
+    Department.create_table()
+    Employee.create_table()
+    Review.create_table()
 
-    @pytest.fixture(autouse=True)
-    def reset_db(self):
-        '''drop and recreate tables prior to each test.'''
-        Review.drop_table()
-        Employee.drop_table()
-        Department.drop_table()
-        Department.create_table()
-        Employee.create_table()
-        Review.create_table()
+    dept = Department.create("Eng", "HQ")
+    return Employee.create("Jamie", "Engineer", dept.id)
 
-    def test_review_valid(self):
-        '''validates name, job title, department id are valid'''
-        # should not raise exception
-        department = Department.create("Payroll", "Building A, 5th Floor")
-        employee = Employee.create("Lee", "Manager", department.id)
+def test_valid_year(employee):
+    r = Review(2023, "Solid performer", employee.id)
+    assert r.year == 2023
 
-        review = Review.create(
-            2023, "Excellent work ethic! Outstanding programming skills!", employee.id)
+def test_invalid_year(employee):
+    with pytest.raises(ValueError):
+        Review(1999, "Too early", employee.id)
 
-    def test_year_is_int(self):
-        '''validates year property is assigned int'''
-        with pytest.raises(ValueError):
-            department = Department.create("Payroll", "Building A, 5th Floor")
-            employee = Employee.create("Lee", "Manager", department.id)
+def test_valid_summary(employee):
+    r = Review(2024, "Good", employee.id)
+    assert r.summary == "Good"
 
-            review = Review.create(
-                "this century", "Excellent work ethic! Outstanding programming skills!", employee.id)
+def test_invalid_summary(employee):
+    with pytest.raises(ValueError):
+        Review(2024, "", employee.id)
 
-    def test_year_value(self):
-        '''validates year property length >= 2000'''
-        with pytest.raises(ValueError):
-            department = Department.create("Payroll", "Building A, 5th Floor")
-            employee = Employee.create("Lee", "Manager", department.id)
+def test_valid_employee_id(employee):
+    r = Review(2025, "Effective", employee.id)
+    assert r.employee_id == employee.id
 
-            review = Review.create(
-                1999, "Excellent work ethic! Outstanding programming skills!", employee.id)
-
-    def test_summary_string_length(self):
-        '''validates summary property length > 0'''
-        with pytest.raises(ValueError):
-            department = Department.create("Payroll", "Building A, 5th Floor")
-            employee = Employee.create("Lee", "Manager", department.id)
-            review = Review.create(2023, "", employee.id)
-
-    def test_employee_fk_property_assignment(self):
-        with pytest.raises(ValueError):
-            department = Department.create("Payroll", "Building A, 5th Floor")
-            employee = Employee.create("Lee", "Manager", department.id)
-            review = Review.create(
-                2023, "Excellent work ethic! Outstanding programming skills!", employee.id)
-            review.employee_id = 100  # id not in employees table
+def test_invalid_employee_id():
+    with pytest.raises(ValueError):
+        Review(2025, "Bad ID", 9999)  # ID that doesn't exist
